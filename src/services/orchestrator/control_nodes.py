@@ -214,7 +214,11 @@ class ControlNodeMixin:
         turn_count = state.get("turn_count", 0)
 
         # ── Guard: already terminated — don't process further ───────────────
-        if state.get("phase") == "terminated":
+        already_terminated = (
+            state.get("phase") == "terminated"
+            or (state.get("feedback") or {}).get("terminated")
+        )
+        if already_terminated:
             return {
                 "next_node": "termination",
                 "last_node": "decide_next_action",

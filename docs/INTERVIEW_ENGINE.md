@@ -325,9 +325,24 @@ Sets:
 - `feedback.terminated = True` — persisted to DB for audit
 - `feedback.terminated_at_turn = N`
 
-### After termination
+### After termination — persistence across reconnects
 
-Any subsequent message from the candidate routes back to `termination_node` (due to the `phase == "terminated"` guard in `decide_next_action_node`), which outputs the same message again.
+`feedback.terminated = True` is saved to the DB by `state_to_interview()`. On reconnect, `interview_to_state()` checks this flag:
+
+```python
+"phase": "terminated" if (interview.feedback or {}).get("terminated") else "intro",
+```
+
+`decide_next_action_node` also checks `feedback.terminated` as a secondary guard (in case phase wasn't in-memory):
+
+```python
+already_terminated = (
+    state.get("phase") == "terminated"
+    or (state.get("feedback") or {}).get("terminated")
+)
+```
+
+Any subsequent message routes back to `termination_node`, which outputs the same message again.
 
 ---
 

@@ -151,7 +151,7 @@ def interview_to_state(interview: Interview, user: Optional["User"] = None) -> "
             "last_code_snapshot": "",
             "last_poll_time": 0.0,
         },
-        "phase": "intro",
+        "phase": "terminated" if (interview.feedback or {}).get("terminated") else "intro",
         "last_node": "",
         "next_node": None,
         "checkpoints": checkpoints,

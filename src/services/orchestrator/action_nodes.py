@@ -115,11 +115,10 @@ class ActionNodeMixin:
         Resume Context:
         {resume_context}
 
-        Your greeting will be spoken aloud. 
+        Your greeting will be spoken aloud.
         - Introduce yourself: "Hi, I'm {interviewer_name}. I'm a {interviewer_role} at {company_name}."
         - Welcome them warmly and personally
         - Reference something brief from their resume if relevant
-        - Mention they have access to a code sandbox if they want to use it
         - Keep it conversational and natural, not formal."""
 
         try:

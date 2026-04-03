@@ -102,11 +102,8 @@ async def entrypoint(ctx: JobContext):
         agent = Agent(
             instructions=(
                 "You are a professional interviewer conducting a technical interview. "
-                "IMPORTANT: The candidate has access to a code sandbox where they can write and submit code. "
-                "If the candidate asks to write code, show code, or review code, guide them to use the sandbox. "
-                "Always acknowledge and respond to candidate requests, especially requests related to code or the sandbox. "
                 "All your responses will be SPOKEN ALOUD. "
-                "Therefore, use short, clear sentences and natural, conversational language. "
+                "Use short, clear sentences and natural, conversational language. "
                 "Ensure your questions are focused and easy to understand when spoken."
             ),
         )
@@ -141,60 +138,9 @@ async def entrypoint(ctx: JobContext):
 
         ctx.room.on("data_received", handle_data_message)
 
-        # Execute LangGraph on first connection to generate initial greeting
-        # LangGraph routes to greeting node when conversation_history is empty
-        try:
-            from src.core.database import AsyncSessionLocal
-            from src.models.interview import Interview
-            from src.models.user import User
-            from src.services.data.state_manager import interview_to_state
-            from sqlalchemy import select
-
-            if resources.db:
-                interview_result = await resources.db.execute(
-                    select(Interview).where(Interview.id == interview_id)
-                )
-                interview = interview_result.scalar_one_or_none()
-
-                if interview and interview.status == "in_progress":
-                    user_result = await resources.db.execute(
-                        select(User).where(User.id == interview.user_id)
-                    )
-                    user = user_result.scalar_one_or_none()
-
-                    conv_history = interview.conversation_history or []
-                    actual_messages = [
-                        msg for msg in conv_history if msg.get("role") != "system"]
-
-                    if not actual_messages:
-                        state = interview_to_state(interview, user=user)
-                        state = await resources.orchestrator_llm.orchestrator.execute_step(state)
-
-                        greeting = state.get("next_message")
-                        if not greeting:
-                            conv_history = state.get(
-                                "conversation_history", [])
-                            for msg in reversed(conv_history):
-                                if msg.get("role") == "assistant" and msg.get("content"):
-                                    greeting = msg.get("content")
-                                    break
-
-                        if greeting and resources.session:
-                            from src.agents.tts_utils import prepare_text_for_tts
-                            from src.services.data.state_manager import state_to_interview
-
-                            greeting_tts = prepare_text_for_tts(greeting)
-                            await resources.session.say(greeting_tts)
-
-                            state_to_interview(state, interview)
-                            if resources.db:
-                                await resources.db.commit()
-                else:
-                    logger.error(
-                        f"Interview {interview_id} not found or not in_progress")
-        except Exception as e:
-            logger.error(
-                f"Error executing initial LangGraph step: {e}", exc_info=True)
+        # The OrchestratorLLM handles the initial greeting automatically via
+        # AgentSession's first LLM call (greeting_node fires when conversation_history
+        # is empty). No manual session.say() needed — doing so causes a duplicate.
 
         # Monitor interview status and room connection state
         try:
